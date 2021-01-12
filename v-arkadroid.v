@@ -22,13 +22,13 @@ const (
 struct Ball {
 mut:
 	x      		f64 = 40
-	y      		f64 = 40
+	y      		f64 = 250
 	width  		f64 = 30
 	height 		f64 = 30
 	center_x	f64
 	center_y 	f64 
 	radius 		f64 = 25  
-	speed  		f64 = 0.4
+	speed  		f64 = 0.01
 	angle  		f64 = 59
 }
 
@@ -100,7 +100,6 @@ fn (mut p Player) is_collision(balls []Ball) bool {
 	return false
 }
 
-
 fn (mut p Player) update() {
 
 	// p.velocity = p.speed
@@ -127,14 +126,50 @@ fn (mut p Player) update() {
 	}
 }
 
+struct Brick {
+mut: 
+	x      		f64 = 40
+	y      		f64 = 40
+	width  		f64 = 80
+	height 		f64 = 30
+	center_x	f64
+	center_y 	f64 
+	color		gg.Image
+	status		bool
+}
+
+fn (mut b Brick) update() {
+
+}
+
+fn (mut br Brick) is_bumping(balls []Ball) bool { 
+	for mut ball in balls {
+		ball.center_x = ball.x+ball.width/2
+		ball.center_y = ball.y+ball.height/2
+		br.center_x = br.x+br.width/2
+		br.center_y = br.y+br.height/2
+		mut dx := math.abs(ball.center_x-br.center_x)
+		mut dy := math.abs(ball.center_y-br.center_y)
+        mut d := math.sqrt((dx*dx) + (dy*dy))
+	return (d <= ball.radius+20) || ((math.abs((br.x + br.width/2) - (ball.x + ball.width/2)) * 2 < (br.width + ball.width)) && (math.abs((br.y + br.height/2) - (ball.y + ball.height/2)) * 2 < (br.height + ball.height)))
+ 	}
+	return false
+}
+
 struct App {
 mut:
 	gg               &gg.Context
 	background       gg.Image
 	player           gg.Image
 	ball    	     gg.Image
-	balls            []Ball
+	brick_red		 gg.Image
+	brick_gold		 gg.Image
+	brick_purple	 gg.Image
 	players          []Player
+	balls            []Ball
+	bricks 			 []Brick
+	row_count 		 int = 5 
+	col_count 		 int = 14
 	score            int
 	max_score        int
 	width            f64 = win_width
@@ -145,7 +180,6 @@ mut:
 	gen              []neuroevolution.Network
 	alives           int
 	generation       int
-	background_speed f64
 	background_x     f64
 	background_y	 f64
 }
@@ -155,6 +189,7 @@ fn (mut app App) start() {
 	app.score = 0
 	app.balls = []
 	app.players = []
+	app.bricks = []
 	app.gen = app.nv.generate()
 	for _ in 0 .. app.gen.len {
 		app.players << Player{}
@@ -168,6 +203,15 @@ fn (mut app App) start() {
 			// width: 40
 			// height: 40
 	}
+	for i in 0 .. app.row_count {
+		for j in 0 .. app.col_count {
+			app.bricks << Brick {
+				x: (j * 90) + 50 
+				y: (i * 40) + 50
+				color: app.pick_color()
+			}
+		}
+	}
 }
 
 fn (app &App) is_it_end() bool {
@@ -179,10 +223,28 @@ fn (app &App) is_it_end() bool {
 	return true
 }
 
+fn (app &App) pick_color() gg.Image {
+  	if math.round(rand.f64()*2) == 0 {
+	return app.brick_purple
+	} else if math.round(rand.f64()*2) == 1 {
+	return app.brick_red
+	}
+    return app.brick_gold
+}
+
 fn (mut app App) update() {
 	
+
 	for j, mut player in app.players {
-		for mut ball in app.balls {
+		for mut brick in app.bricks {
+			for mut ball in app.balls {
+
+			if brick.is_bumping(app.balls) {
+				ball.speed = -ball.speed //+player.speed/10
+				ball.angle = 180-ball.angle-player.speed
+				app.bricks.pop()
+				brick.status = false
+			}
 			
 			if player.is_collision(app.balls) {
 				ball.speed = -ball.speed //+player.speed/10
@@ -202,7 +264,6 @@ fn (mut app App) update() {
 					player.move(0)
 				}
 				player.update()
-				ball.update()
 				if ball.is_out() {
 					player.alive = false
 					app.alives--
@@ -211,6 +272,9 @@ fn (mut app App) update() {
 						app.start()
 					}
 				}
+				ball.update()
+			}
+
 			}
 		}
 	}
@@ -295,6 +359,9 @@ fn init_images(mut app App) {
 	app.background = app.gg.create_image(os.resource_abs_path('./images/background.png'))
 	app.player = app.gg.create_image(os.resource_abs_path('./images/paddle.png'))
 	app.ball = app.gg.create_image(os.resource_abs_path('./images/ball.png'))
+	app.brick_red = app.gg.create_image(os.resource_abs_path('./images/brick_red.png'))
+	app.brick_gold = app.gg.create_image(os.resource_abs_path('./images/brick_gold.png'))
+	app.brick_purple = app.gg.create_image(os.resource_abs_path('./images/brick_purple.png'))
 }
 
 fn frame(app &App) {
@@ -306,7 +373,10 @@ fn frame(app &App) {
 fn (app &App) display() {
 		app.gg.draw_image(f32(app.background_x), f32(app.background_y), app.background.width, app.background.height,
 			app.background)
-		
+		for brick in app.bricks {
+			app.gg.draw_image(f32(brick.x), f32(brick.y),
+				f32(brick.width), f32(brick.height), brick.color)
+		}
 		for ball in app.balls {
 			app.gg.draw_image(f32(ball.x), f32(ball.y),
 				f32(ball.width), f32(ball.height), app.ball)

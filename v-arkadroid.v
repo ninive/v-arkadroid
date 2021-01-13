@@ -79,8 +79,8 @@ fn (mut p Player) fire() {
 }
 
 fn (mut p Player) move(dir int) {
-	if dir == 0 {p.speed-= 0.6}
-	if dir == 1 {p.speed++ 0.6}
+	if dir == 0 {p.speed -= 0.6}
+	if dir == 1 {p.speed += 0.6}
 }
 
 fn (mut p Player) release(dir int) {
@@ -389,7 +389,7 @@ fn (app &App) display() {
 			
 		for brick in app.bricks {	
 			if app.generation == 1 {
-				
+
 			// app.gg.draw_text(300, 250, 'Initializing Splash Screen!', font_large)
 			time.sleep_ms(1)
 			}

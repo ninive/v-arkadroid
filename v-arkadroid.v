@@ -6,16 +6,20 @@ import os
 import time
 import math
 import rand
-// import sokol.sapp
+import sokol.sapp
 import neuroevolution
 
 const (
 	win_width    = 1340
 	win_height   = 754
 	timer_period = 24
-	font_cfg = gx.TextCfg{
+	font_small = gx.TextCfg {
 		color: gx.white
 		size: 20
+	}
+	font_large = gx.TextCfg {
+		color: gx.black
+		size: 40
 	}
 )
 
@@ -28,7 +32,7 @@ mut:
 	center_x	f64
 	center_y 	f64 
 	radius 		f64 = 25  
-	speed  		f64 = 0.01
+	speed  		f64 = 0.07
 	angle  		f64 = 59
 }
 
@@ -66,9 +70,8 @@ mut:
 	gravity 	f64 = -0.012
 	friction 	f64 = -0.5
 	speed   	f64
-	velocity 	f64 
 	thrust		f64
-	ammo     	f64 = 5
+	ammo     	f64 = 3
 }
 
 fn (mut p Player) fire() {
@@ -76,14 +79,14 @@ fn (mut p Player) fire() {
 }
 
 fn (mut p Player) move(dir int) {
-	if dir == 0 {p.speed-= 10}
-	if dir == 1 {p.speed+= 10}
+	if dir == 0 {p.speed-= 0.6}
+	if dir == 1 {p.speed++ 0.6}
 }
 
-// fn (mut p Player) release(dir int) {
-// 	if dir == 0 {p.speed =-0.3}
-// 	if dir == 1 {p.speed =0.3}
-// }
+fn (mut p Player) release(dir int) {
+	if dir == 0 {p.speed =0}
+	if dir == 1 {p.speed =0}
+}
 
 fn (mut p Player) is_collision(balls []Ball) bool {
   
@@ -95,31 +98,27 @@ fn (mut p Player) is_collision(balls []Ball) bool {
 		mut dx := math.abs(ball.center_x-p.center_x)
 		mut dy := math.abs(ball.center_y-p.center_y)
         mut d := math.sqrt((dx*dx) + (dy*dy))
-	return (d <= ball.radius+20) || ((math.abs((p.x + p.width/2) - (ball.x + ball.width/2)) * 2 < (p.width + ball.width)) && (math.abs((p.y + p.height/2) - (ball.y + ball.height/2)) * 2 < (p.height + ball.height)))
+	return (d <= ball.radius) || ((math.abs((p.x + p.width/2) - (ball.x + ball.width/2)) * 2 < (p.width + ball.width)) && (math.abs((p.y + p.height/2) - (ball.y + ball.height/2)) * 2 < (p.height + ball.height)))
  	}
 	return false
 }
 
 fn (mut p Player) update() {
 
-	// p.velocity = p.speed
 	p.x += p.speed
-
 	// if p.speed > 7 { p.speed += p.friction }
 
 	if p.x > 1340-p.width {
 		p.x = 1340-p.width
 		p.speed = 0
-		// p.velocity = 0
 	}
 	if p.x < 0 {
 		p.x = 0
 		p.speed = 0
-		// p.velocity = 0
 	}
 
-	if p.speed > 10 { p.speed = 10} 
-	if p.speed < -10 { p.speed = -10} 
+	if p.speed > 4 { p.speed = 4} 
+	if p.speed < -4 { p.speed = -4} 
 
 	if p.ammo <= 0 { 
 		p.ammo = 0 
@@ -135,11 +134,7 @@ mut:
 	center_x	f64
 	center_y 	f64 
 	color		gg.Image
-	status		bool
-}
-
-fn (mut b Brick) update() {
-
+	tag			int
 }
 
 fn (mut br Brick) is_bumping(balls []Ball) bool { 
@@ -151,7 +146,7 @@ fn (mut br Brick) is_bumping(balls []Ball) bool {
 		mut dx := math.abs(ball.center_x-br.center_x)
 		mut dy := math.abs(ball.center_y-br.center_y)
         mut d := math.sqrt((dx*dx) + (dy*dy))
-	return (d <= ball.radius+20) || ((math.abs((br.x + br.width/2) - (ball.x + ball.width/2)) * 2 < (br.width + ball.width)) && (math.abs((br.y + br.height/2) - (ball.y + ball.height/2)) * 2 < (br.height + ball.height)))
+	return (d <= ball.radius) || ((math.abs((br.x + br.width/2) - (ball.x + ball.width/2)) * 2 < (br.width + ball.width)) && (math.abs((br.y + br.height/2) - (ball.y + ball.height/2)) * 2 < (br.height + ball.height)))
  	}
 	return false
 }
@@ -174,8 +169,6 @@ mut:
 	max_score        int
 	width            f64 = win_width
 	height           f64 = win_height
-	spawn_interval   f64 = 90
-	interval         f64
 	nv               neuroevolution.Generations
 	gen              []neuroevolution.Network
 	alives           int
@@ -185,7 +178,6 @@ mut:
 }
 
 fn (mut app App) start() {
-	app.interval = 0
 	app.score = 0
 	app.balls = []
 	app.players = []
@@ -196,12 +188,8 @@ fn (mut app App) start() {
 	}
 	app.generation++
 	app.alives = app.players.len
-
 	app.balls << Ball{
 			x: math.round(rand.f64() * (app.width)) 
-			// y: 80
-			// width: 40
-			// height: 40
 	}
 	for i in 0 .. app.row_count {
 		for j in 0 .. app.col_count {
@@ -209,6 +197,7 @@ fn (mut app App) start() {
 				x: (j * 90) + 50 
 				y: (i * 40) + 50
 				color: app.pick_color()
+				tag: app.pick_tag()
 			}
 		}
 	}
@@ -232,94 +221,107 @@ fn (app &App) pick_color() gg.Image {
     return app.brick_gold
 }
 
+fn (app &App) pick_tag() int {
+  	if math.round(rand.f64()*2) == 0 {
+	return 0
+	} else if math.round(rand.f64()*2) == 1 {
+	return 1
+	}
+    return 2
+}
+
 fn (mut app App) update() {
 	
-
 	for j, mut player in app.players {
-		for mut brick in app.bricks {
+		for k, mut brick in app.bricks {
 			for mut ball in app.balls {
 
-			if brick.is_bumping(app.balls) {
-				ball.speed = -ball.speed //+player.speed/10
-				ball.angle = 180-ball.angle-player.speed
-				app.bricks.pop()
-				brick.status = false
-			}
-			
-			if player.is_collision(app.balls) {
-				ball.speed = -ball.speed //+player.speed/10
-				ball.angle = 180-ball.angle-player.speed	
-			}
-
-			if player.alive {
-				inputs := [
-					player.x / app.width,
-					ball.x / app.width
-					// ball.y / app.height
-				]
-				res := app.gen[j].compute(inputs)
-				if res[0] > 0.5 {
-					player.move(1)
-				} else {
-					player.move(0)
+				if brick.is_bumping(app.balls) {
+					ball.speed = -ball.speed
+					ball.angle = 180-ball.angle
+					if brick.tag == 0 {
+						app.score += 100
+					} else if brick.tag == 1 {
+						app.score += 200
+					} else if brick.tag == 2 {
+						// Roll an extra k isolated fire bonus here + render fx
+					}
+					// This is probably not the right choice
+					app.bricks.delete(k)
 				}
-				player.update()
-				if ball.is_out() {
-					player.alive = false
-					app.alives--
-					app.nv.network_score(app.gen[j], app.score)
-					if app.is_it_end() {
-						app.start()
+				
+				if player.is_collision(app.balls) {
+					ball.speed = -ball.speed
+					// Poor side collision
+					if (player.x > ball.x && player.y < ball.y) || (player.x + player.width > ball.x && player.y + player.height < ball.y) {
+					} else {
+					ball.angle = 180-ball.angle-player.speed	
 					}
 				}
-				ball.update()
-			}
 
+				if player.alive {
+					/* evoNN I/O */
+
+					// inputs := [
+					// 	player.x / app.width,
+					// 	ball.x / app.width
+					// 	// ball.y / app.height
+					// ]
+					// res := app.gen[j].compute(inputs)
+					// if res[0] > 0.5 {
+					// 	player.move(1)
+					// } else {
+					// 	player.move(0)
+					// }
+					player.update()
+					ball.update()
+					if ball.is_out() {
+						player.alive = false
+						app.alives--
+						app.nv.network_score(app.gen[j], app.score)
+						if app.is_it_end() { app.start() }
+					}
+				}
 			}
 		}
-	}
-	
-	app.interval++
-	if app.interval == app.spawn_interval {
-		app.interval = 0
 	}
 	app.score++
 	app.max_score = if app.score > app.max_score { app.score } else { app.max_score }
 }
 
-// fn (mut app App) on_key_down(key sapp.KeyCode) {
-// 	for mut player in app.players {
-// 		match key {
-// 			.a, .left {player.move(0)}
-// 			.s, .right {player.move(1)}
-// 			// .space {player.fire()}
-// 			else {}
-// 		}
-// 	}
-// }
+fn (mut app App) on_key_down(key sapp.KeyCode) {
+	for mut player in app.players {
+		match key {
+			.a, .left {player.move(0)}
+			.s, .right {player.move(1)}
+			// .space {player.fire()}
+			else {}
+		}
+	}
+}
 
-// fn (mut app App) on_key_up(key sapp.KeyCode) {
-// 	for mut player in app.players {
-// 		match key {
-// 			.a, .left {player.release(0)}
-// 			.s, .right {player.release(1)}
-// 			// .space {player.fire()}
-// 			else {}
-// 		}
-// 	}
-// }
+fn (mut app App) on_key_up(key sapp.KeyCode) {
+	for mut player in app.players {
+		match key {
+			.a, .left {player.release(0)}
+			.s, .right {player.release(1)}
+			// .space {player.fire()}
+			else {}
+		}
+	}
+}
 
-// fn on_event(e &sapp.Event, mut app App) {
-// 	match e.typ {
-// 		.key_down {
-// 			app.on_key_down(e.key_code)
-// 		}
-// 		// .key_up {
-// 		// 	app.on_key_up(e.key_code)
-// 		// }
-// 		else {}
-// 	}
-// }
+fn on_event(e &sapp.Event, mut app App) {
+	match e.typ {
+		.key_down {
+			app.on_key_down(e.key_code)
+		}
+		.key_up {
+			app.on_key_up(e.key_code)
+		}
+		else {}
+	}
+}
 
 fn main() {
 	mut app := &App{
@@ -329,17 +331,17 @@ fn main() {
 		bg_color: gx.white
 		width: win_width
 		height: win_height
-		use_ortho: true // This is needed for 2D drawing
+		use_ortho: true
 		create_window: true
-		window_title: 'arkadroid-v'
+		window_title: 'v-arkadroid'
 		frame_fn: frame
-		// event_fn: on_event
+		event_fn: on_event
 		user_data: app
 		init_fn: init_images
 		font_path: os.resource_abs_path('../assets/fonts/RobotoMono-Regular.ttf')
 	)
 	app.nv = neuroevolution.Generations{
-		population: 50
+		population: 3
 		network: [2, 3, 1]
 		training: true
 	}
@@ -373,10 +375,7 @@ fn frame(app &App) {
 fn (app &App) display() {
 		app.gg.draw_image(f32(app.background_x), f32(app.background_y), app.background.width, app.background.height,
 			app.background)
-		for brick in app.bricks {
-			app.gg.draw_image(f32(brick.x), f32(brick.y),
-				f32(brick.width), f32(brick.height), brick.color)
-		}
+	
 		for ball in app.balls {
 			app.gg.draw_image(f32(ball.x), f32(ball.y),
 				f32(ball.width), f32(ball.height), app.ball)
@@ -387,23 +386,22 @@ fn (app &App) display() {
 				app.player)
 			}
 		}
+			
+		for brick in app.bricks {	
+			if app.generation == 1 {
+				
+			// app.gg.draw_text(300, 250, 'Initializing Splash Screen!', font_large)
+			time.sleep_ms(1)
+			}
+			app.gg.draw_image(f32(brick.x), f32(brick.y),
+				f32(brick.width), f32(brick.height), brick.color)
+		}
 
-		app.gg.draw_text(10, 25, 'Score: $app.score', font_cfg)
-		app.gg.draw_text(10, 50, 'Max Score: $app.max_score', font_cfg)
-		app.gg.draw_text(10, 75, 'Generation: $app.generation', font_cfg)
-		app.gg.draw_text(10, 100, 'Population: $app.nv.population', font_cfg)
-		// for mut ball in app.balls {
-		// mut bp1 := ball.x+ball.width
-		// mut bp2 := ball.y+ball.height
-		// app.gg.draw_text(10, 125, 'Ball: $ball.x, $ball.y, $bp1, $bp2, $ball.angle', font_cfg)	
-		// }
-		// for mut player in app.players {
-		// mut pp1 := player.x+player.width
-		// mut pp2 := player.y+player.height
-		// app.gg.draw_text(10, 150, 'Player: $player.x, $player.y, $pp1, $pp2', font_cfg)	
-		// }
-		/* Quick note on raster reference */
-        // app.gg.draw_text(10, 150, 'Image: $app.ball.data', font_cfg)
+		app.gg.draw_text(10, 25, 'Score: $app.score', font_small)
+		app.gg.draw_text(10, 50, 'Max Score: $app.max_score', font_small)
+
+		/* Quick note on raster reference, maybe the []byte bitmap is easy to rotate? */
+        // app.gg.draw_text(10, 150, 'Image: $app.ball.data', font_small)
 }
 
 fn (app &App) draw() {

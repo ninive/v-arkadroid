@@ -238,7 +238,11 @@ fn (mut app App) update() {
 
 				if brick.is_bumping(app.balls) {
 					ball.speed = -ball.speed
+					// Poor side collision
+					if (brick.x > ball.x && brick.y < ball.y) || (brick.x + brick.width > ball.x && brick.y + brick.height < ball.y) {
+					} else {
 					ball.angle = 180-ball.angle
+					}
 					if brick.tag == 0 {
 						app.score += 100
 					} else if brick.tag == 1 {
@@ -255,7 +259,7 @@ fn (mut app App) update() {
 					// Poor side collision
 					if (player.x > ball.x && player.y < ball.y) || (player.x + player.width > ball.x && player.y + player.height < ball.y) {
 					} else {
-					ball.angle = 180-ball.angle-player.speed	
+					ball.angle = 180-ball.angle-(player.speed*2)	
 					}
 				}
 

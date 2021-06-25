@@ -12,7 +12,7 @@ import neuroevolution
 const (
 	win_width    = 1340
 	win_height   = 754
-	timer_period = 24
+	timer_period = 24 * time.millisecond
 	font_small = gx.TextCfg {
 		color: gx.white
 		size: 20
@@ -88,7 +88,7 @@ fn (mut p Player) release(dir int) {
 	if dir == 1 {p.speed =0}
 }
 
-fn (mut p Player) is_collision(balls []Ball) bool {
+fn (mut p Player) is_collision(mut balls []Ball) bool {
   
 	for mut ball in balls {
 		ball.center_x = ball.x+ball.width/2
@@ -137,7 +137,7 @@ mut:
 	tag			int
 }
 
-fn (mut br Brick) is_bumping(balls []Ball) bool { 
+fn (mut br Brick) is_bumping(mut balls []Ball) bool { 
 	for mut ball in balls {
 		ball.center_x = ball.x+ball.width/2
 		ball.center_y = ball.y+ball.height/2
@@ -236,7 +236,7 @@ fn (mut app App) update() {
 		for k, mut brick in app.bricks {
 			for mut ball in app.balls {
 
-				if brick.is_bumping(app.balls) {
+				if brick.is_bumping(mut app.balls) {
 					ball.speed = -ball.speed
 					// Poor side collision
 					if (brick.x > ball.x && brick.y < ball.y) || (brick.x + brick.width > ball.x && brick.y + brick.height < ball.y) {
@@ -254,7 +254,7 @@ fn (mut app App) update() {
 					app.bricks.delete(k)
 				}
 				
-				if player.is_collision(app.balls) {
+				if player.is_collision(mut app.balls) {
 					ball.speed = -ball.speed
 					// Poor side collision
 					if (player.x > ball.x && player.y < ball.y) || (player.x + player.width > ball.x && player.y + player.height < ball.y) {
@@ -266,17 +266,17 @@ fn (mut app App) update() {
 				if player.alive {
 					/* evoNN I/O */
 
-					// inputs := [
-					// 	player.x / app.width,
-					// 	ball.x / app.width
-					// 	// ball.y / app.height
-					// ]
-					// res := app.gen[j].compute(inputs)
-					// if res[0] > 0.5 {
-					// 	player.move(1)
-					// } else {
-					// 	player.move(0)
-					// }
+					inputs := [
+						player.x / app.width,
+						ball.x / app.width
+						// ball.y / app.height
+					]
+					res := app.gen[j].compute(inputs)
+					if res[0] > 0.5 {
+						player.move(1)
+					} else {
+						player.move(0)
+					}
 					player.update()
 					ball.update()
 					if ball.is_out() {
@@ -339,13 +339,13 @@ fn main() {
 		create_window: true
 		window_title: 'v-arkadroid'
 		frame_fn: frame
-		event_fn: on_event
+		// event_fn: on_event
 		user_data: app
 		init_fn: init_images
 		font_path: os.resource_abs_path('../assets/fonts/RobotoMono-Regular.ttf')
 	)
 	app.nv = neuroevolution.Generations{
-		population: 3
+		population: 20
 		network: [2, 3, 1]
 		training: true
 	}
@@ -357,7 +357,7 @@ fn main() {
 fn (mut app App) run() {
 	for {
 		app.update()
-		time.sleep_ms(timer_period)
+		time.sleep(timer_period)
 	}
 }
 
@@ -395,7 +395,7 @@ fn (app &App) display() {
 			if app.generation == 1 {
 
 			// app.gg.draw_text(300, 250, 'Initializing Splash Screen!', font_large)
-			time.sleep_ms(1)
+			time.sleep(1)
 			}
 			app.gg.draw_image(f32(brick.x), f32(brick.y),
 				f32(brick.width), f32(brick.height), brick.color)

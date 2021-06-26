@@ -6,13 +6,12 @@ import os
 import time
 import math
 import rand
-import sokol.sapp
 import neuroevolution
 
 const (
 	win_width    = 1340
 	win_height   = 754
-	timer_period = 24 * time.millisecond
+	timer_period = 40 * time.millisecond // Framerate defined as 1000ms / timer_period (defaulted 25 fps)
 	font_small = gx.TextCfg {
 		color: gx.white
 		size: 20
@@ -23,6 +22,8 @@ const (
 	}
 )
 
+/* Ball instance */ 
+
 struct Ball {
 mut:
 	x      		f64 = 40
@@ -32,7 +33,7 @@ mut:
 	center_x	f64
 	center_y 	f64 
 	radius 		f64 = 25  
-	speed  		f64 = 0.07
+	speed  		f64 = 0.06
 	angle  		f64 = 59
 }
 
@@ -58,6 +59,8 @@ fn (b Ball) is_out() bool {
 	return b.y + b.height > 754
 }
 
+/* Player instance */ 
+
 struct Player {
 mut:
 	x        	f64 = 670
@@ -78,18 +81,17 @@ fn (mut p Player) fire() {
 	p.ammo--
 }
 
-fn (mut p Player) move(dir int) {
+fn (mut p Player) move(dir int) { 
 	if dir == 0 {p.speed -= 0.6}
 	if dir == 1 {p.speed += 0.6}
 }
 
-fn (mut p Player) release(dir int) {
+fn (mut p Player) release(dir int) { 
 	if dir == 0 {p.speed =0}
 	if dir == 1 {p.speed =0}
 }
 
 fn (mut p Player) is_collision(mut balls []Ball) bool {
-  
 	for mut ball in balls {
 		ball.center_x = ball.x+ball.width/2
 		ball.center_y = ball.y+ball.height/2
@@ -125,6 +127,8 @@ fn (mut p Player) update() {
 	}
 }
 
+/* Brick instance */ 
+
 struct Brick {
 mut: 
 	x      		f64 = 40
@@ -151,6 +155,8 @@ fn (mut br Brick) is_bumping(mut balls []Ball) bool {
 	return false
 }
 
+/* Game basics */
+
 struct App {
 mut:
 	gg               &gg.Context
@@ -163,7 +169,7 @@ mut:
 	players          []Player
 	balls            []Ball
 	bricks 			 []Brick
-	row_count 		 int = 5 
+	row_count 		 int = 4
 	col_count 		 int = 14
 	score            int
 	max_score        int
@@ -212,6 +218,14 @@ fn (app &App) is_it_end() bool {
 	return true
 }
 
+/* Exercise - To do */
+
+// fn (app &App) is_it_win() bool {
+	
+// }
+
+/* Helpers */
+
 fn (app &App) pick_color() gg.Image {
   	if math.round(rand.f64()*2) == 0 {
 	return app.brick_purple
@@ -248,9 +262,9 @@ fn (mut app App) update() {
 					} else if brick.tag == 1 {
 						app.score += 200
 					} else if brick.tag == 2 {
-						// Roll an extra k isolated fire bonus here + render fx
+						app.score += 300
+						// Hint: roll an extra k isolated fire bonus here + render fx
 					}
-					// This is probably not the right choice
 					app.bricks.delete(k)
 				}
 				
@@ -293,7 +307,9 @@ fn (mut app App) update() {
 	app.max_score = if app.score > app.max_score { app.score } else { app.max_score }
 }
 
-fn (mut app App) on_key_down(key sapp.KeyCode) {
+/* Human Controls */
+
+fn (mut app App) on_key_down(key gg.KeyCode) {
 	for mut player in app.players {
 		match key {
 			.a, .left {player.move(0)}
@@ -304,7 +320,7 @@ fn (mut app App) on_key_down(key sapp.KeyCode) {
 	}
 }
 
-fn (mut app App) on_key_up(key sapp.KeyCode) {
+fn (mut app App) on_key_up(key gg.KeyCode) {
 	for mut player in app.players {
 		match key {
 			.a, .left {player.release(0)}
@@ -315,7 +331,7 @@ fn (mut app App) on_key_up(key sapp.KeyCode) {
 	}
 }
 
-fn on_event(e &sapp.Event, mut app App) {
+fn on_event(e &gg.Event, mut app App) {
 	match e.typ {
 		.key_down {
 			app.on_key_down(e.key_code)
@@ -326,6 +342,8 @@ fn on_event(e &sapp.Event, mut app App) {
 		else {}
 	}
 }
+
+/* Module main and render*/
 
 fn main() {
 	mut app := &App{
@@ -339,13 +357,13 @@ fn main() {
 		create_window: true
 		window_title: 'v-arkadroid'
 		frame_fn: frame
-		// event_fn: on_event
+		// event_fn: on_event // Keyboard disabled
 		user_data: app
 		init_fn: init_images
 		font_path: os.resource_abs_path('../assets/fonts/RobotoMono-Regular.ttf')
 	)
 	app.nv = neuroevolution.Generations{
-		population: 20
+		population: 50
 		network: [2, 3, 1]
 		training: true
 	}
@@ -392,20 +410,15 @@ fn (app &App) display() {
 		}
 			
 		for brick in app.bricks {	
-			if app.generation == 1 {
-
-			// app.gg.draw_text(300, 250, 'Initializing Splash Screen!', font_large)
-			time.sleep(1)
-			}
 			app.gg.draw_image(f32(brick.x), f32(brick.y),
 				f32(brick.width), f32(brick.height), brick.color)
 		}
 
 		app.gg.draw_text(10, 25, 'Score: $app.score', font_small)
 		app.gg.draw_text(10, 50, 'Max Score: $app.max_score', font_small)
-
-		/* Quick note on raster reference, maybe the []byte bitmap is easy to rotate? */
-        // app.gg.draw_text(10, 150, 'Image: $app.ball.data', font_small)
+		app.gg.draw_text(10, 75, 'Population: $app.nv.population', font_small)
+		app.gg.draw_text(10, 100, 'Generation: $app.generation', font_small)
+        // app.gg.draw_text(10, 150, 'Image: $app.ball.data', font_small) // Ball collision debug
 }
 
 fn (app &App) draw() {

@@ -87,8 +87,8 @@ fn (mut p Player) move(dir int) {
 }
 
 fn (mut p Player) release(dir int) { 
-	if dir == 0 {p.speed =0}
-	if dir == 1 {p.speed =0}
+	if dir == 0 {p.speed = 0}
+	if dir == 1 {p.speed = 0}
 }
 
 fn (mut p Player) is_collision(mut balls []Ball) bool {
@@ -283,7 +283,6 @@ fn (mut app App) update() {
 					inputs := [
 						player.x / app.width,
 						ball.x / app.width
-						// ball.y / app.height
 					]
 					res := app.gen[j].compute(inputs)
 					if res[0] > 0.5 {
@@ -291,8 +290,6 @@ fn (mut app App) update() {
 					} else {
 						player.move(0)
 					}
-					player.update()
-					ball.update()
 					if ball.is_out() {
 						player.alive = false
 						app.alives--
@@ -300,8 +297,10 @@ fn (mut app App) update() {
 						if app.is_it_end() { app.start() }
 					}
 				}
+			ball.update()
 			}
 		}
+	player.update()
 	}
 	app.score++
 	app.max_score = if app.score > app.max_score { app.score } else { app.max_score }
@@ -344,8 +343,9 @@ fn on_event(e &gg.Event, mut app App) {
 }
 
 /* Module main and render*/
-
+[console]
 fn main() {
+	println(os.resource_abs_path)
 	mut app := &App{
 		gg: 0
 	}
@@ -357,13 +357,13 @@ fn main() {
 		create_window: true
 		window_title: 'v-arkadroid'
 		frame_fn: frame
-		// event_fn: on_event // Keyboard disabled
+		event_fn: on_event
 		user_data: app
 		init_fn: init_images
-		font_path: os.resource_abs_path('../assets/fonts/RobotoMono-Regular.ttf')
+		font_path: os.resource_abs_path('./fonts/RobotoMono-Regular.ttf')
 	)
 	app.nv = neuroevolution.Generations{
-		population: 50
+		population: 20
 		network: [2, 3, 1]
 		training: true
 	}

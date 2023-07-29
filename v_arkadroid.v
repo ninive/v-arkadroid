@@ -380,12 +380,12 @@ fn (mut app App) run() {
 }
 
 fn init_images(mut app App) {
-	app.background = app.gg.create_image(os.resource_abs_path('./images/background.png'))
-	app.player = app.gg.create_image(os.resource_abs_path('./images/paddle.png'))
-	app.ball = app.gg.create_image(os.resource_abs_path('./images/ball.png'))
-	app.brick_red = app.gg.create_image(os.resource_abs_path('./images/brick_red.png'))
-	app.brick_gold = app.gg.create_image(os.resource_abs_path('./images/brick_gold.png'))
-	app.brick_purple = app.gg.create_image(os.resource_abs_path('./images/brick_purple.png'))
+	app.background = app.gg.create_image(os.resource_abs_path('./images/background.png')) or { panic('iamge not found') }
+	app.player = app.gg.create_image(os.resource_abs_path('./images/paddle.png')) or { panic('iamge not found') }
+	app.ball = app.gg.create_image(os.resource_abs_path('./images/ball.png')) or { panic('iamge not found') }
+	app.brick_red = app.gg.create_image(os.resource_abs_path('./images/brick_red.png')) or { panic('iamge not found') }
+	app.brick_gold = app.gg.create_image(os.resource_abs_path('./images/brick_gold.png')) or { panic('iamge not found') }
+	app.brick_purple = app.gg.create_image(os.resource_abs_path('./images/brick_purple.png')) or { panic('iamge not found') }
 }
 
 fn frame(app &App) {
